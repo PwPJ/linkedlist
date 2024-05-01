@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setting up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.22.2'
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Build
+        run: go build -v ./...
+
+  fmt:
+    name: Format Check
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Format Check code
+        uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.22.2'
+      - name: Format
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Unformatted files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - name: Setting up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.22.2'
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Test
+        run: go test -v ./...
