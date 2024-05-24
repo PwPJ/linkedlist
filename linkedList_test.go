@@ -6,7 +6,7 @@ import (
 
 // TestLinkedListInsert tests various scenarios of the Insert method
 func TestLinkedListInsert(t *testing.T) {
-	l := new()
+	l := New()
 	// Test inserting into an empty list
 	if !l.Insert(0, 10) {
 		t.Error("Insert failed to insert the first element")
@@ -39,7 +39,7 @@ func TestLinkedListInsert(t *testing.T) {
 
 // TestLinkedListRemove tests various scenarios of the Remove method
 func TestLinkedListRemove(t *testing.T) {
-	l := new()
+	l := New()
 	l.Insert(0, 10)
 	l.Insert(1, 20)
 	l.Insert(2, 30)
@@ -76,7 +76,7 @@ func TestLinkedListRemove(t *testing.T) {
 
 // TestLinkedListGet tests various scenarios of the Get method
 func TestLinkedListGet(t *testing.T) {
-	l := new()
+	l := New()
 	l.Insert(0, 10)
 	l.Insert(1, 20)
 	l.Insert(2, 30)
@@ -101,7 +101,7 @@ func TestLinkedListGet(t *testing.T) {
 
 // TestLinkedListFind tests various scenarios of the Find method
 func TestLinkedListFind(t *testing.T) {
-	l := new()
+	l := New()
 	l.Insert(0, 10)
 	l.Insert(1, 20)
 	l.Insert(2, 30)

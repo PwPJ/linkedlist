@@ -17,7 +17,7 @@ type L struct {
 }
 
 // new creates and returns a new instance of a linked list
-func new() *L {
+func New() *L {
 	return &L{}
 }
 
