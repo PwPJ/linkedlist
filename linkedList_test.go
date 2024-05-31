@@ -2,7 +2,69 @@ package main
 
 import (
 	"testing"
+	"testing/quick"
 )
+
+func TestLinkedListPropertiesQuick(t *testing.T) {
+	err := quick.Check(func(inputs []int) bool {
+		l := New()
+
+		for k, v := range inputs {
+			ok := l.Insert(uint(k), v)
+			if !ok {
+				return false
+			}
+		}
+
+		if l.length != uint(len(inputs)) {
+			return false
+		}
+
+		for k, v := range inputs {
+			out, ok := l.Get(uint(k))
+			if !ok {
+				return false
+			}
+			if out != v {
+				return false
+			}
+		}
+
+		for k, v := range inputs {
+			index, found := l.Find(v)
+			if !found {
+				return false
+			}
+			if index != uint(k) {
+				return false
+			}
+		}
+
+		for v := uint(len(inputs)); v > 0; v-- {
+			ok := l.Remove(v - 1)
+			if !ok {
+				return false
+			}
+		}
+
+		if l.length != 0 {
+			return false
+		}
+
+		for k := range inputs {
+			_, ok := l.Get(uint(k))
+			if ok {
+				return false
+			}
+		}
+
+		return true
+	}, nil) // used default config
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
 // TestLinkedListInsert tests various scenarios of the Insert method
 func TestLinkedListInsert(t *testing.T) {
