@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 // Node represents an element in the linked list
@@ -19,6 +21,23 @@ type L struct {
 // new creates and returns a new instance of a linked list
 func New() *L {
 	return &L{}
+}
+
+type InsertRequest struct {
+	Index uint `json:"index"`
+	Value int  `json:"value"`
+}
+
+type GetRequest struct {
+	Index uint `json:"index"`
+}
+
+type RemoveRequest struct {
+	Index uint `json:"index"`
+}
+
+type FindRequest struct {
+	Value int `json:"value"`
 }
 
 func (l *L) Find(n int) (index uint, found bool) {
@@ -104,22 +123,72 @@ func (l *L) Remove(index uint) bool {
 }
 
 func main() {
-	newList := &L{}
-	newList.Insert(0, 100)
-	newList.Insert(1, 200)
-	newList.Insert(2, 300)
+	list := New()
+	http.HandleFunc("/insert", func(w http.ResponseWriter, r *http.Request) {
+		var req InsertRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		success := list.Insert(req.Index, req.Value)
+		if !success {
+			http.Error(w, "Insert failed", http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintln(w, "Insert successful")
+	})
 
-	value, ok := newList.Get(1) // value at index 1
-	if !ok {
-		fmt.Println("failed, index out of range")
-	} else {
-		fmt.Println("value at index 1:", value)
-	}
+	http.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
+		var req GetRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		value, found := list.Get(req.Index)
+		if !found {
+			http.Error(w, "Index out of range", http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(w, "Value at index %d: %d\n", req.Index, value)
+	})
 
-	value, ok = newList.Get(8) // value at an out-of-range index
-	if !ok {
-		fmt.Println("Retrieval failed, index out of range")
-	} else {
-		fmt.Println("Value at index 8:", value)
-	}
+	http.HandleFunc("/remove", func(w http.ResponseWriter, r *http.Request) {
+		var req RemoveRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		success := list.Remove(req.Index)
+		if !success {
+			http.Error(w, "Remove failed", http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintln(w, "Remove successful")
+	})
+
+	http.HandleFunc("/find", func(w http.ResponseWriter, r *http.Request) {
+		var req FindRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		index, found := list.Find(req.Value)
+		if !found {
+			http.Error(w, "Value not found", http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(w, "Value %d found at index %d\n", req.Value, index)
+	})
+
+	http.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
+		current := list.head
+		var values []int
+		for current != nil {
+			values = append(values, current.Value)
+			current = current.Next
+		}
+		json.NewEncoder(w).Encode(values)
+	})
+
+	http.ListenAndServe(":8080", nil)
 }
