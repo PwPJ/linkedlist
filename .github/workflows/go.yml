@@ -59,4 +59,4 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Run Unit Tests
-        run: go test -v ./... -run '.*_test.go'
+        run: go test -v ./...
