@@ -84,11 +84,7 @@ func (l *LinkedList) Insert(index uint, val int) bool {
 		current = current.Next
 	}
 
-	if current.Next != nil {
-		newNode.Next = current.Next.Next
-	} else {
-		newNode.Next = nil
-	}
+	newNode.Next = current.Next
 	current.Next = newNode
 	l.length++
 
