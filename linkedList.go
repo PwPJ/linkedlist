@@ -4,43 +4,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
+	"sync"
 )
 
-// Node represents an element in the linked list
 type Node struct {
 	Value int
 	Next  *Node
 }
 
-// L represents a linked list
-type L struct {
+type LinkedList struct {
 	head   *Node
 	length uint
+	mutex  sync.Mutex
 }
 
-// new creates and returns a new instance of a linked list
-func New() *L {
-	return &L{}
+func NewLinkedList() *LinkedList {
+	return &LinkedList{}
 }
 
-type InsertRequest struct {
-	Index uint `json:"index"`
-	Value int  `json:"value"`
-}
+func (l *LinkedList) Find(n int) (index uint, found bool) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
 
-type GetRequest struct {
-	Index uint `json:"index"`
-}
-
-type RemoveRequest struct {
-	Index uint `json:"index"`
-}
-
-type FindRequest struct {
-	Value int `json:"value"`
-}
-
-func (l *L) Find(n int) (index uint, found bool) {
 	current := l.head
 	index = 0
 	for current != nil {
@@ -53,30 +40,38 @@ func (l *L) Find(n int) (index uint, found bool) {
 	return 0, false
 }
 
-func (l *L) Get(index uint) (int, bool) {
-	current := l.head
+func (l *LinkedList) Get(index uint) (int, bool) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
 
+	current := l.head
 	for i := uint(0); i < index; i++ {
 		if current == nil {
-			return 0, false // return 0 and false if index is out of range
+			return 0, false
 		}
-		current = current.Next // move to the next node
+		current = current.Next
 	}
 
 	if current == nil {
-		return 0, false // return 0 and false if index is exactly one past the last node
+		return 0, false
 	}
 
-	return current.Value, true // return the value at the node and true indicating success
+	return current.Value, true
 }
 
-func (l *L) Insert(index uint, val int) bool {
+func (l *LinkedList) Insert(index uint, val int) bool {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
 	if index > l.length {
 		return false
 	}
 
+	newNode := &Node{Value: val}
+
 	if index == 0 {
-		l.head = &Node{Value: val, Next: l.head}
+		newNode.Next = l.head
+		l.head = newNode
 		l.length++
 		return true
 	}
@@ -89,17 +84,26 @@ func (l *L) Insert(index uint, val int) bool {
 		current = current.Next
 	}
 
-	current.Next = &Node{Value: val, Next: current.Next}
+	if current.Next != nil {
+		newNode.Next = current.Next.Next
+	} else {
+		newNode.Next = nil
+	}
+	current.Next = newNode
 	l.length++
-	return true //successful insertion
+
+	return true
 }
 
-func (l *L) Remove(index uint) bool {
-	if index >= l.length { // Check if index is out of range
+func (l *LinkedList) Remove(index uint) bool {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	if index >= l.length {
 		return false
 	}
 
-	if index == 0 { // Remove the first element
+	if index == 0 {
 		l.head = l.head.Next
 		l.length--
 		return true
@@ -108,87 +112,127 @@ func (l *L) Remove(index uint) bool {
 	current := l.head
 	for i := uint(0); i < index-1; i++ {
 		if current.Next == nil {
-			return false // If there's no next element, fail
+			return false
 		}
 		current = current.Next
 	}
 
 	if current.Next == nil {
-		return false // Safety check for the last element
+		return false
 	}
 
-	current.Next = current.Next.Next // Adjust the pointer to skip over the removed node
+	current.Next = current.Next.Next
 	l.length--
 	return true
 }
 
+func handleInsert(w http.ResponseWriter, r *http.Request, list *LinkedList) {
+	var req struct {
+		Index uint `json:"index"`
+		Value int  `json:"value"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	success := list.Insert(req.Index, req.Value)
+	if !success {
+		http.Error(w, "Insert failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Insert successful"})
+}
+
+func handleGet(w http.ResponseWriter, r *http.Request, list *LinkedList) {
+	indexStr := strings.TrimPrefix(r.URL.Path, "/get/")
+	index, err := strconv.Atoi(indexStr)
+	if err != nil {
+		http.Error(w, "Invalid index", http.StatusBadRequest)
+		return
+	}
+
+	value, found := list.Get(uint(index))
+	if !found {
+		http.Error(w, "Index out of range", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"value": value})
+}
+
+func handleRemove(w http.ResponseWriter, r *http.Request, list *LinkedList) {
+	indexStr := strings.TrimPrefix(r.URL.Path, "/remove/")
+	index, err := strconv.Atoi(indexStr)
+	if err != nil {
+		http.Error(w, "Invalid index", http.StatusBadRequest)
+		return
+	}
+
+	success := list.Remove(uint(index))
+	if !success {
+		http.Error(w, "Remove failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Remove successful"})
+}
+
+func handleFind(w http.ResponseWriter, r *http.Request, list *LinkedList) {
+	valueStr := strings.TrimPrefix(r.URL.Path, "/find/")
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		http.Error(w, "Invalid value", http.StatusBadRequest)
+		return
+	}
+
+	index, found := list.Find(value)
+	if !found {
+		http.Error(w, "Value not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]uint{"index": index})
+}
+
+func handleList(w http.ResponseWriter, _ *http.Request, list *LinkedList) {
+	current := list.head
+	var values []int
+	for current != nil {
+		values = append(values, current.Value)
+		current = current.Next
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(values)
+}
+
 func main() {
-	list := New()
+	list := NewLinkedList()
 	http.HandleFunc("/insert", func(w http.ResponseWriter, r *http.Request) {
-		var req InsertRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
-		success := list.Insert(req.Index, req.Value)
-		if !success {
-			http.Error(w, "Insert failed", http.StatusInternalServerError)
-			return
-		}
-		fmt.Fprintln(w, "Insert successful")
+		handleInsert(w, r, list)
 	})
-
-	http.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
-		var req GetRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
-		value, found := list.Get(req.Index)
-		if !found {
-			http.Error(w, "Index out of range", http.StatusNotFound)
-			return
-		}
-		fmt.Fprintf(w, "Value at index %d: %d\n", req.Index, value)
+	http.HandleFunc("/get/", func(w http.ResponseWriter, r *http.Request) {
+		handleGet(w, r, list)
 	})
-
-	http.HandleFunc("/remove", func(w http.ResponseWriter, r *http.Request) {
-		var req RemoveRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
-		success := list.Remove(req.Index)
-		if !success {
-			http.Error(w, "Remove failed", http.StatusInternalServerError)
-			return
-		}
-		fmt.Fprintln(w, "Remove successful")
+	http.HandleFunc("/remove/", func(w http.ResponseWriter, r *http.Request) {
+		handleRemove(w, r, list)
 	})
-
-	http.HandleFunc("/find", func(w http.ResponseWriter, r *http.Request) {
-		var req FindRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
-		index, found := list.Find(req.Value)
-		if !found {
-			http.Error(w, "Value not found", http.StatusNotFound)
-			return
-		}
-		fmt.Fprintf(w, "Value %d found at index %d\n", req.Value, index)
+	http.HandleFunc("/find/", func(w http.ResponseWriter, r *http.Request) {
+		handleFind(w, r, list)
 	})
-
 	http.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
-		current := list.head
-		var values []int
-		for current != nil {
-			values = append(values, current.Value)
-			current = current.Next
-		}
-		json.NewEncoder(w).Encode(values)
+		handleList(w, r, list)
 	})
 
+	fmt.Println("Server started at :8080")
 	http.ListenAndServe(":8080", nil)
 }
