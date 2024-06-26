@@ -17,7 +17,11 @@ type Node struct {
 type LinkedList struct {
 	head   *Node
 	length uint
-	mutex  sync.Mutex
+}
+
+type SafeLinkedList struct {
+	list  *LinkedList
+	mutex sync.Mutex
 }
 
 func NewLinkedList() *LinkedList {
@@ -25,9 +29,6 @@ func NewLinkedList() *LinkedList {
 }
 
 func (l *LinkedList) Find(n int) (index uint, found bool) {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
 	current := l.head
 	index = 0
 	for current != nil {
@@ -41,9 +42,6 @@ func (l *LinkedList) Find(n int) (index uint, found bool) {
 }
 
 func (l *LinkedList) Get(index uint) (int, bool) {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
 	current := l.head
 	for i := uint(0); i < index; i++ {
 		if current == nil {
@@ -60,9 +58,6 @@ func (l *LinkedList) Get(index uint) (int, bool) {
 }
 
 func (l *LinkedList) Insert(index uint, val int) bool {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
 	if index > l.length {
 		return false
 	}
@@ -87,14 +82,10 @@ func (l *LinkedList) Insert(index uint, val int) bool {
 	newNode.Next = current.Next
 	current.Next = newNode
 	l.length++
-
 	return true
 }
 
 func (l *LinkedList) Remove(index uint) bool {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
 	if index >= l.length {
 		return false
 	}
@@ -122,7 +113,35 @@ func (l *LinkedList) Remove(index uint) bool {
 	return true
 }
 
-func handleInsert(w http.ResponseWriter, r *http.Request, list *LinkedList) {
+func NewSafeLinkedList() *SafeLinkedList {
+	return &SafeLinkedList{list: NewLinkedList()}
+}
+
+func (s *SafeLinkedList) Find(n int) (index uint, found bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.list.Find(n)
+}
+
+func (s *SafeLinkedList) Get(index uint) (int, bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.list.Get(index)
+}
+
+func (s *SafeLinkedList) Insert(index uint, val int) bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.list.Insert(index, val)
+}
+
+func (s *SafeLinkedList) Remove(index uint) bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.list.Remove(index)
+}
+
+func handleInsert(w http.ResponseWriter, r *http.Request, list *SafeLinkedList) {
 	var req struct {
 		Index uint `json:"index"`
 		Value int  `json:"value"`
@@ -135,7 +154,7 @@ func handleInsert(w http.ResponseWriter, r *http.Request, list *LinkedList) {
 
 	success := list.Insert(req.Index, req.Value)
 	if !success {
-		http.Error(w, "Insert failed", http.StatusInternalServerError)
+		http.Error(w, "Index out of range", http.StatusNotFound)
 		return
 	}
 
@@ -144,7 +163,7 @@ func handleInsert(w http.ResponseWriter, r *http.Request, list *LinkedList) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Insert successful"})
 }
 
-func handleGet(w http.ResponseWriter, r *http.Request, list *LinkedList) {
+func handleGet(w http.ResponseWriter, r *http.Request, list *SafeLinkedList) {
 	indexStr := strings.TrimPrefix(r.URL.Path, "/get/")
 	index, err := strconv.Atoi(indexStr)
 	if err != nil {
@@ -162,7 +181,7 @@ func handleGet(w http.ResponseWriter, r *http.Request, list *LinkedList) {
 	json.NewEncoder(w).Encode(map[string]int{"value": value})
 }
 
-func handleRemove(w http.ResponseWriter, r *http.Request, list *LinkedList) {
+func handleRemove(w http.ResponseWriter, r *http.Request, list *SafeLinkedList) {
 	indexStr := strings.TrimPrefix(r.URL.Path, "/remove/")
 	index, err := strconv.Atoi(indexStr)
 	if err != nil {
@@ -172,7 +191,7 @@ func handleRemove(w http.ResponseWriter, r *http.Request, list *LinkedList) {
 
 	success := list.Remove(uint(index))
 	if !success {
-		http.Error(w, "Remove failed", http.StatusInternalServerError)
+		http.Error(w, "Index out of range", http.StatusNotFound)
 		return
 	}
 
@@ -180,7 +199,7 @@ func handleRemove(w http.ResponseWriter, r *http.Request, list *LinkedList) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Remove successful"})
 }
 
-func handleFind(w http.ResponseWriter, r *http.Request, list *LinkedList) {
+func handleFind(w http.ResponseWriter, r *http.Request, list *SafeLinkedList) {
 	valueStr := strings.TrimPrefix(r.URL.Path, "/find/")
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
@@ -198,8 +217,11 @@ func handleFind(w http.ResponseWriter, r *http.Request, list *LinkedList) {
 	json.NewEncoder(w).Encode(map[string]uint{"index": index})
 }
 
-func handleList(w http.ResponseWriter, _ *http.Request, list *LinkedList) {
-	current := list.head
+func handleList(w http.ResponseWriter, _ *http.Request, list *SafeLinkedList) {
+	list.mutex.Lock()
+	defer list.mutex.Unlock()
+
+	current := list.list.head
 	var values []int
 	for current != nil {
 		values = append(values, current.Value)
@@ -212,20 +234,20 @@ func handleList(w http.ResponseWriter, _ *http.Request, list *LinkedList) {
 }
 
 func main() {
-	list := NewLinkedList()
-	http.HandleFunc("/insert", func(w http.ResponseWriter, r *http.Request) {
+	list := NewSafeLinkedList()
+	http.HandleFunc("POST /insert", func(w http.ResponseWriter, r *http.Request) {
 		handleInsert(w, r, list)
 	})
-	http.HandleFunc("/get/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /get/{index}", func(w http.ResponseWriter, r *http.Request) {
 		handleGet(w, r, list)
 	})
-	http.HandleFunc("/remove/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("DELETE /remove/{index}", func(w http.ResponseWriter, r *http.Request) {
 		handleRemove(w, r, list)
 	})
-	http.HandleFunc("/find/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /find/{value}", func(w http.ResponseWriter, r *http.Request) {
 		handleFind(w, r, list)
 	})
-	http.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /list", func(w http.ResponseWriter, r *http.Request) {
 		handleList(w, r, list)
 	})
 
