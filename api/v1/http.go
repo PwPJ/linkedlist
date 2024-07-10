@@ -1,120 +1,21 @@
-package main
+package v1
 
 import (
 	"encoding/json"
-	"fmt"
+	"linkedlist/linkedlist"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 )
 
-type Node struct {
-	Value int
-	Next  *Node
-}
-
-type LinkedList struct {
-	head   *Node
-	length uint
-}
-
 type SafeLinkedList struct {
-	list  *LinkedList
+	list  *linkedlist.LinkedList
 	mutex sync.Mutex
 }
 
-func NewLinkedList() *LinkedList {
-	return &LinkedList{}
-}
-
-func (l *LinkedList) Find(n int) (index uint, found bool) {
-	current := l.head
-	index = 0
-	for current != nil {
-		if current.Value == n {
-			return index, true
-		}
-		current = current.Next
-		index++
-	}
-	return 0, false
-}
-
-func (l *LinkedList) Get(index uint) (int, bool) {
-	current := l.head
-	for i := uint(0); i < index; i++ {
-		if current == nil {
-			return 0, false
-		}
-		current = current.Next
-	}
-
-	if current == nil {
-		return 0, false
-	}
-
-	return current.Value, true
-}
-
-func (l *LinkedList) Insert(index uint, val int) bool {
-	if index > l.length {
-		return false
-	}
-
-	newNode := &Node{Value: val}
-
-	if index == 0 {
-		newNode.Next = l.head
-		l.head = newNode
-		l.length++
-		return true
-	}
-
-	current := l.head
-	for i := uint(0); i < index-1; i++ {
-		if current == nil {
-			return false
-		}
-		current = current.Next
-	}
-
-	newNode.Next = current.Next
-	current.Next = newNode
-	l.length++
-	return true
-}
-
-func (l *LinkedList) Remove(index uint) bool {
-	if index >= l.length {
-		return false
-	}
-
-	if index == 0 {
-		l.head = l.head.Next
-		l.length--
-		return true
-	}
-
-	current := l.head
-	for i := uint(0); i < index-1; i++ {
-		if current.Next == nil {
-			return false
-		}
-		current = current.Next
-	}
-
-	if current.Next == nil {
-		return false
-	}
-
-	current.Next = current.Next.Next
-	l.length--
-	return true
-}
-
 func NewSafeLinkedList() *SafeLinkedList {
-	return &SafeLinkedList{list: NewLinkedList()}
+	return &SafeLinkedList{list: linkedlist.NewLinkedList()}
 }
 
 func (s *SafeLinkedList) Find(n int) (index uint, found bool) {
@@ -221,36 +122,32 @@ func handleList(w http.ResponseWriter, _ *http.Request, list *SafeLinkedList) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 
-	current := list.list.head
-	var values []int
-	for current != nil {
-		values = append(values, current.Value)
-		current = current.Next
-	}
-
+	values := list.list.HandleList()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(values)
 }
 
-func main() {
+func V1() http.Handler {
 	list := NewSafeLinkedList()
-	http.HandleFunc("POST /insert", func(w http.ResponseWriter, r *http.Request) {
+
+	h := http.NewServeMux()
+
+	h.HandleFunc("POST /insert", func(w http.ResponseWriter, r *http.Request) {
 		handleInsert(w, r, list)
 	})
-	http.HandleFunc("GET /get/{index}", func(w http.ResponseWriter, r *http.Request) {
+	h.HandleFunc("GET /get/{index}", func(w http.ResponseWriter, r *http.Request) {
 		handleGet(w, r, list)
 	})
-	http.HandleFunc("DELETE /remove/{index}", func(w http.ResponseWriter, r *http.Request) {
+	h.HandleFunc("DELETE /remove/{index}", func(w http.ResponseWriter, r *http.Request) {
 		handleRemove(w, r, list)
 	})
-	http.HandleFunc("GET /find/{value}", func(w http.ResponseWriter, r *http.Request) {
+	h.HandleFunc("GET /find/{value}", func(w http.ResponseWriter, r *http.Request) {
 		handleFind(w, r, list)
 	})
-	http.HandleFunc("GET /list", func(w http.ResponseWriter, r *http.Request) {
+	h.HandleFunc("GET /list", func(w http.ResponseWriter, r *http.Request) {
 		handleList(w, r, list)
 	})
 
-	fmt.Println("Server started at :8080")
-	http.ListenAndServe(":8080", nil)
+	return h
 }
