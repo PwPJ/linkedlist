@@ -53,31 +53,22 @@ HTTP 404
 [Asserts]
 body == "Index out of range\n"
 
-POST http://{{host}}/v2/numbers
+POST http://{{host}}/v2/numbers/0/2
 Content-Type: application/json
-{
-  "value": 2, "index": 0
-}
 HTTP 201
 [Asserts]
 jsonpath "$.index" == 0
 jsonpath "$.value" == 2
 
-POST http://{{host}}/v2/numbers
+POST http://{{host}}/v2/numbers/1/4
 Content-Type: application/json
-{
-  "value": 4, "index": 1
-}
 HTTP 201
 [Asserts]
 jsonpath "$.index" == 1
 jsonpath "$.value" == 4
 
-POST http://{{host}}/v2/numbers
+POST http://{{host}}/v2/numbers/3/3
 Content-Type: application/json
-{
-  "value": 3, "index": 3
-}
 HTTP 400
 [Asserts]
 jsonpath "$.message" == "Invalid index"

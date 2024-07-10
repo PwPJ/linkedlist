@@ -7,13 +7,13 @@ import (
 	"strconv"
 
 	"github.com/go-playground/validator"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	echo "github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type ListEntity struct {
-	Index uint `json:"index"`
-	Value int  `json:"value" validate:"required"`
+	Index uint `json:"index" param:"index"`
+	Value int  `json:"value" param:"value"`
 }
 
 type server struct {
@@ -49,6 +49,7 @@ func V2() (*echo.Echo, error) {
 
 func (s *server) Insert(c echo.Context) error {
 	data := ListEntity{}
+
 	if err := c.Bind(&data); err != nil {
 		return err
 	}
