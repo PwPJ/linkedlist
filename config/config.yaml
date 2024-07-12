@@ -1,0 +1,6 @@
+server:
+  port: 8080
+
+logger:
+  add_source: true
+  level: debug
