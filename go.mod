@@ -5,6 +5,7 @@ go 1.22.2
 require (
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/labstack/echo/v4 v4.12.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

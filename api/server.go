@@ -5,9 +5,8 @@ import (
 	"fmt"
 	v1 "linkedlist/api/v1"
 	v2 "linkedlist/api/v2"
+	"linkedlist/config"
 
-	// v2 "linkedlist/api/v2"
-	// "linkedlist/config"
 	"log/slog"
 	"net/http"
 )
@@ -36,13 +35,12 @@ func (a *Api) Shutdown(ctx context.Context) error {
 	return a.Server.Shutdown(ctx)
 }
 
-func (a *Api) Start() error {
-	port := 8080
+func (a *Api) Start(ctx context.Context) error {
 	a.Server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
+		Addr:    fmt.Sprintf(":%d", config.Confs.Server.Port),
 		Handler: a.Mux,
 	}
-	slog.Info("Running", "port", port)
+	slog.Info("Running", "port", config.Confs.Server.Port)
 	err := a.Server.ListenAndServe()
 	if err != nil {
 		return err

@@ -1,8 +1,10 @@
 package v2
 
 import (
+	"context"
 	"fmt"
 	"linkedlist/linkedlist"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -33,7 +35,30 @@ func (cv *customValidator) Validate(i interface{}) error {
 
 func V2() (*echo.Echo, error) {
 	e := echo.New()
-	e.Use(middleware.Logger())
+
+	logger := slog.Default()
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogStatus:   true,
+		LogURI:      true,
+		LogError:    true,
+		HandleError: true, // forwards error to the global error handler, so it can decide appropriate status code
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			if v.Error == nil {
+				logger.LogAttrs(context.Background(), slog.LevelInfo, "REQUEST",
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+				)
+			} else {
+				logger.LogAttrs(context.Background(), slog.LevelError, "REQUEST_ERROR",
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.String("err", v.Error.Error()),
+				)
+			}
+			return nil
+		},
+	}))
+
 	e.Validator = &customValidator{validator: validator.New()}
 
 	s := &server{}
