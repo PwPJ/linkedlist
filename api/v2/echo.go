@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/go-playground/validator"
 	echo "github.com/labstack/echo/v4"
@@ -19,7 +20,8 @@ type ListEntity struct {
 }
 
 type server struct {
-	list *linkedlist.LinkedList
+	list  *linkedlist.LinkedList
+	mutex sync.Mutex
 }
 
 type customValidator struct {
@@ -82,6 +84,9 @@ func (s *server) Insert(c echo.Context) error {
 		return err
 	}
 
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	ok := s.list.Insert(data.Index, data.Value)
 	if !ok {
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid index")
@@ -97,6 +102,9 @@ func (s *server) Remove(c echo.Context) error {
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid index")
 	}
 
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	ok := s.list.Remove(uint(index))
 	if !ok {
 		return echo.NewHTTPError(echo.ErrNotFound.Code, "Index not found")
@@ -104,7 +112,6 @@ func (s *server) Remove(c echo.Context) error {
 
 	c.NoContent(http.StatusOK)
 	return nil
-
 }
 
 func (s *server) Find(c echo.Context) error {
@@ -114,6 +121,9 @@ func (s *server) Find(c echo.Context) error {
 		fmt.Println(err)
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
 	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	index, ok := s.list.Find(value)
 	if !ok {
@@ -129,12 +139,14 @@ func (s *server) Find(c echo.Context) error {
 }
 
 func (s *server) Get(c echo.Context) error {
-
 	indexStr := c.Param("index")
 	index, err := strconv.ParseUint(indexStr, 10, 32)
 	if err != nil {
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid index")
 	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	value, ok := s.list.Get(uint(index))
 	if !ok {
