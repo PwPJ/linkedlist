@@ -1,9 +1,15 @@
 #!/bin/bash
 
+cleanup() {
+    echo "Cleanup"
+    rm -f $INSERT_FILE $FIND_FILE post.lua get.lua
+    echo "Cleanup completed"
+}
+
 # Generate random numbers for insert and find operations
 INSERT_FILE="inserts.json"
 FIND_FILE="finds.txt"
-NUM_ENTRIES=100000
+NUM_ENTRIES=10
 
 # Create random insert JSON
 echo "[" > $INSERT_FILE
@@ -26,7 +32,7 @@ while IFS= read -r line; do
   value=$(echo $line | sed 's/.*"value": \([0-9]*\).*/\1/')
   if ! curl -s -X POST -H "Content-Type: application/json" -d "$line" http://localhost:8080/v2/numbers/$index/$value > /dev/null; then
     echo "Error inserting $line"
-      rm -f $INSERT_FILE $FIND_FILE post.lua get.lua
+     cleanup
     exit 1
   fi
 done < <(tail -n +2 $INSERT_FILE | head -n -1 | sed 's/,$//')
@@ -46,7 +52,7 @@ EOF
 # Benchmark the insert operation
 echo "Benchmarking insert operation..."
 if ! wrk -t12 -c100 -d30s -s post.lua http://localhost:8080; then
-      rm -f $INSERT_FILE $FIND_FILE post.lua get.lua
+  cleanup
   exit 1
 fi
 
@@ -69,9 +75,11 @@ EOF
 # Benchmark the find operation
 echo "Benchmarking find operation..."
 if ! wrk -t12 -c100 -d30s -s get.lua http://localhost:8080; then
-  rm -f $INSERT_FILE $FIND_FILE post.lua get.lua
+  cleanup
   exit 1
 fi
 
 # Cleanup
+trap 'cleanup; exit 1' SIGINT SIGTERM
+
 rm -f $INSERT_FILE $FIND_FILE post.lua get.lua
