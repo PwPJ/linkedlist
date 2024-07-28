@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/go-playground/validator"
+	"github.com/labstack/echo-contrib/echoprometheus"
 	echo "github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -62,6 +63,10 @@ func V2() (*echo.Echo, error) {
 	}))
 
 	e.Validator = &customValidator{validator: validator.New()}
+
+	// Prometheus middleware
+	e.Use(echoprometheus.NewMiddleware("myapp"))
+	e.GET("/metrics", echoprometheus.NewHandler())
 
 	s := &server{}
 	l := linkedlist.NewLinkedList()
