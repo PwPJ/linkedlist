@@ -13,30 +13,37 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "myapp_request_duration_seconds_bucket",
-          "legendFormat": "{{handler}}",
+          "expr": "histogram_quantile(0.50, sum(rate(myapp_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50",
           "refId": "A",
           "editorMode": "code",
           "range": true
         },
         {
-          "expr": "myapp_request_duration_seconds_count",
-          "legendFormat": "__auto",
+          "expr": "histogram_quantile(0.90, sum(rate(myapp_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p90",
           "refId": "B",
           "editorMode": "code",
           "range": true
         },
         {
-          "expr": "myapp_request_duration_seconds_sum",
-          "legendFormat": "__auto",
+          "expr": "histogram_quantile(0.99, sum(rate(myapp_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99",
           "refId": "C",
+          "editorMode": "code",
+          "range": true
+        },
+        {
+          "expr": "sum(rate(myapp_request_duration_seconds_count[5m]))",
+          "legendFormat": "Total Requests",
+          "refId": "D",
           "editorMode": "builder",
           "range": true
         },
         {
-          "expr": "myapp_requests_total",
-          "legendFormat": "__auto",
-          "refId": "D",
+          "expr": "sum(myapp_request_duration_seconds_sum)",
+          "legendFormat": "Sum Duration",
+          "refId": "E",
           "editorMode": "builder",
           "range": true
         }
