@@ -81,21 +81,22 @@
           "showLegend": true,
           "displayMode": "list",
           "placement": "bottom"
-        }
-      },
-      "xaxis": {
-        "mode": "time",
-        "show": true
-      },
-      "yaxes": [
-        {
-          "format": "short",
+        },
+        "connectNulls": true,
+        "xaxis": {
+          "mode": "time",
           "show": true
         },
-        {
-          "show": true
-        }
-      ]
+        "yaxes": [
+          {
+            "format": "short",
+            "show": true
+          },
+          {
+            "show": true
+          }
+        ]
+      }
     }
   ]
 }
