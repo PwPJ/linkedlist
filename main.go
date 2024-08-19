@@ -34,18 +34,22 @@ func run(ctx context.Context) (*api.Api, error) {
 
 	server, err := api.New()
 	if err != nil {
-		slog.Error("Bootin api", "error", err)
+		slog.Error("Booting api", "error", err)
 		return nil, err
 	}
 
 	go func() {
 		if err := server.Start(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Starting server", "errror", err)
+			slog.Error("Starting server", "error", err)
 			os.Exit(1)
 		}
 	}()
 
 	return server, nil
+}
+
+func configChanged(oldConfig *config.Config) bool {
+	return oldConfig.Server.Port != config.Confs.Server.Port || oldConfig.Logger.Level != config.Confs.Logger.Level
 }
 
 func main() {
@@ -65,10 +69,23 @@ func main() {
 		sig := <-sigs
 		switch sig {
 		case syscall.SIGHUP:
-			slog.Info("Received SIGHUP, reloading configuration...")
+			slog.Info("Received SIGHUP, checking configuration...")
 
-			err = server.Shutdown(ctx)
-			if err != nil {
+			oldConfig := config.Confs
+
+			if err := config.Load(*cfg); err != nil {
+				slog.Error("Reading new configuration", "error", err)
+				continue
+			}
+
+			if !configChanged(&oldConfig) {
+				slog.Info("Configuration unchanged, no reload needed.")
+				continue
+			}
+
+			slog.Info("Configuration has changed, reloading server...")
+
+			if err = server.Shutdown(ctx); err != nil {
 				slog.Error("could not stop server", "error", err)
 				continue
 			}
@@ -87,5 +104,4 @@ func main() {
 			os.Exit(0)
 		}
 	}
-
 }

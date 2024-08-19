@@ -29,6 +29,8 @@ type customValidator struct {
 	validator *validator.Validate
 }
 
+var registerMetricsMiddleware sync.Once
+
 func (cv *customValidator) Validate(i interface{}) error {
 	if err := cv.validator.Struct(i); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -64,9 +66,10 @@ func V2() (*echo.Echo, error) {
 
 	e.Validator = &customValidator{validator: validator.New()}
 
-	// Prometheus middleware
-	e.Use(echoprometheus.NewMiddleware("myapp"))
-	e.GET("/metrics", echoprometheus.NewHandler())
+	registerMetricsMiddleware.Do(func() {
+		e.Use(echoprometheus.NewMiddleware("myapp"))
+		e.GET("/metrics", echoprometheus.NewHandler())
+	})
 
 	s := &server{}
 	l := linkedlist.NewLinkedList()
