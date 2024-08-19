@@ -16,21 +16,22 @@ import (
 
 var cfg = flag.String("config", "config/config.yaml", "yaml config path")
 
+type ConfigChangeType string
+
+const (
+	serverChange ConfigChangeType = "server"
+	loggerChange ConfigChangeType = "logger"
+	noChange     ConfigChangeType = "no change"
+)
+
 func run(ctx context.Context) (*api.Api, error) {
 	err := config.Load(*cfg)
 	if err != nil {
 		slog.Error("Reading configuration", "error", err)
 		return nil, err
 	}
-	level, ok := config.MapLevel[strings.ToUpper(config.Confs.Logger.Level)]
-	if !ok {
-		level = slog.LevelError
-	}
-	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		AddSource: config.Confs.Logger.AddSource,
-		Level:     level,
-	}))
-	slog.SetDefault(l)
+
+	ConfigureLoggerLevel()
 
 	server, err := api.New()
 	if err != nil {
@@ -48,8 +49,31 @@ func run(ctx context.Context) (*api.Api, error) {
 	return server, nil
 }
 
-func configChanged(oldConfig *config.Config) bool {
-	return oldConfig.Server.Port != config.Confs.Server.Port || oldConfig.Logger.Level != config.Confs.Logger.Level
+func ConfigureLoggerLevel() {
+	level, ok := config.MapLevel[strings.ToUpper(config.Confs.Logger.Level)]
+	if !ok {
+		level = slog.LevelError
+	}
+
+	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource: config.Confs.Logger.AddSource,
+		Level:     level,
+	}))
+
+	slog.SetDefault(l)
+}
+
+func configChanged(oldConfig *config.Config) ConfigChangeType {
+	if oldConfig.Server.Port != config.Confs.Server.Port {
+		return serverChange
+	}
+
+	if oldConfig.Logger.AddSource != config.Confs.Logger.AddSource ||
+		oldConfig.Logger.Level != config.Confs.Logger.Level {
+		return loggerChange
+	}
+
+	return noChange
 }
 
 func main() {
@@ -78,8 +102,16 @@ func main() {
 				continue
 			}
 
-			if !configChanged(&oldConfig) {
-				slog.Info("Configuration unchanged, no reload needed.")
+			configChangeType := configChanged(&oldConfig)
+
+			if configChangeType == noChange {
+				slog.Info("Configuration unchanged, no actions required.")
+				continue
+			}
+
+			if configChangeType == loggerChange {
+				ConfigureLoggerLevel()
+				slog.Info("Logger configuration updated.")
 				continue
 			}
 
