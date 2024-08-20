@@ -16,36 +16,64 @@ import (
 
 var cfg = flag.String("config", "config/config.yaml", "yaml config path")
 
+type ConfigChangeType string
+
+const (
+	serverChange ConfigChangeType = "server"
+	loggerChange ConfigChangeType = "logger"
+	noChange     ConfigChangeType = "no change"
+)
+
 func run(ctx context.Context) (*api.Api, error) {
 	err := config.Load(*cfg)
 	if err != nil {
 		slog.Error("Reading configuration", "error", err)
 		return nil, err
 	}
-	level, ok := config.MapLevel[strings.ToUpper(config.Confs.Logger.Level)]
-	if !ok {
-		level = slog.LevelError
-	}
-	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		AddSource: config.Confs.Logger.AddSource,
-		Level:     level,
-	}))
-	slog.SetDefault(l)
+
+	ConfigureLoggerLevel()
 
 	server, err := api.New()
 	if err != nil {
-		slog.Error("Bootin api", "error", err)
+		slog.Error("Booting api", "error", err)
 		return nil, err
 	}
 
 	go func() {
 		if err := server.Start(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Starting server", "errror", err)
+			slog.Error("Starting server", "error", err)
 			os.Exit(1)
 		}
 	}()
 
 	return server, nil
+}
+
+func ConfigureLoggerLevel() {
+	level, ok := config.MapLevel[strings.ToUpper(config.Confs.Logger.Level)]
+	if !ok {
+		level = slog.LevelError
+	}
+
+	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource: config.Confs.Logger.AddSource,
+		Level:     level,
+	}))
+
+	slog.SetDefault(l)
+}
+
+func configChanged(oldConfig *config.Config) ConfigChangeType {
+	if oldConfig.Server.Port != config.Confs.Server.Port {
+		return serverChange
+	}
+
+	if oldConfig.Logger.AddSource != config.Confs.Logger.AddSource ||
+		oldConfig.Logger.Level != config.Confs.Logger.Level {
+		return loggerChange
+	}
+
+	return noChange
 }
 
 func main() {
@@ -65,10 +93,31 @@ func main() {
 		sig := <-sigs
 		switch sig {
 		case syscall.SIGHUP:
-			slog.Info("Received SIGHUP, reloading configuration...")
+			slog.Info("Received SIGHUP, checking configuration...")
 
-			err = server.Shutdown(ctx)
-			if err != nil {
+			oldConfig := config.Confs
+
+			if err := config.Load(*cfg); err != nil {
+				slog.Error("Reading new configuration", "error", err)
+				continue
+			}
+
+			configChangeType := configChanged(&oldConfig)
+
+			if configChangeType == noChange {
+				slog.Info("Configuration unchanged, no actions required.")
+				continue
+			}
+
+			if configChangeType == loggerChange {
+				ConfigureLoggerLevel()
+				slog.Info("Logger configuration updated.")
+				continue
+			}
+
+			slog.Info("Configuration has changed, reloading server...")
+
+			if err = server.Shutdown(ctx); err != nil {
 				slog.Error("could not stop server", "error", err)
 				continue
 			}
@@ -87,5 +136,4 @@ func main() {
 			os.Exit(0)
 		}
 	}
-
 }

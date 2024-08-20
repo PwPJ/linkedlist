@@ -14,9 +14,9 @@ var MapLevel = map[string]slog.Level{
 	"ERROR": slog.LevelError,
 }
 
-var Confs config
+var Confs Config
 
-type config struct {
+type Config struct {
 	Server server `yaml:"server"`
 	Logger logger `yaml:"logger"`
 }
