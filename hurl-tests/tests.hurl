@@ -79,7 +79,18 @@ HTTP 200
 jsonpath "$.index" == 0
 jsonpath "$.value" == 2
 
+GET http://{{host}}/v2/numbers/rwmutex/index/0
+HTTP 200
+[Asserts]
+jsonpath "$.index" == 0
+jsonpath "$.value" == 2
+
 GET http://{{host}}/v2/numbers/index/2
+HTTP 404
+[Asserts]
+jsonpath "$.message" == "Index not found"
+
+GET http://{{host}}/v2/numbers/rwmutex/index/2
 HTTP 404
 [Asserts]
 jsonpath "$.message" == "Index not found"
@@ -90,15 +101,33 @@ HTTP 200
 jsonpath "$.index" == 1
 jsonpath "$.value" == 4
 
+GET http://{{host}}/v2/numbers/rwmutex/value/4
+HTTP 200
+[Asserts]
+jsonpath "$.index" == 1
+jsonpath "$.value" == 4
+
+
 GET http://{{host}}/v2/numbers/value/6
 HTTP 404
 [Asserts]
 jsonpath "$.message" == "Value not found"
 
+GET http://{{host}}/v2/numbers/rwmutex/value/6
+HTTP 404
+[Asserts]
+jsonpath "$.message" == "Value not found"
+
+
 DELETE http://{{host}}/v2/numbers/1
 HTTP 200
 
 GET http://{{host}}/v2/numbers/index/1
+HTTP 404
+[Asserts]
+jsonpath "$.message" == "Index not found"
+
+GET http://{{host}}/v2/numbers/rwmutex/index/1
 HTTP 404
 [Asserts]
 jsonpath "$.message" == "Index not found"
