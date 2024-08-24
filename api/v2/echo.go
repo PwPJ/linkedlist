@@ -96,9 +96,9 @@ func (s *server) Insert(c echo.Context) error {
 	}
 
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	ok := s.list.Insert(data.Index, data.Value)
+	s.mutex.Unlock()
+
 	if !ok {
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid index")
 	}
@@ -114,9 +114,9 @@ func (s *server) Remove(c echo.Context) error {
 	}
 
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	ok := s.list.Remove(uint(index))
+	s.mutex.Unlock()
+
 	if !ok {
 		return echo.NewHTTPError(echo.ErrNotFound.Code, "Index not found")
 	}
@@ -134,9 +134,9 @@ func (s *server) Find(c echo.Context) error {
 	}
 
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	index, ok := s.list.Find(value)
+	s.mutex.Unlock()
+
 	if !ok {
 		return echo.NewHTTPError(echo.ErrNotFound.Code, "Value not found")
 	}
@@ -157,9 +157,9 @@ func (s *server) Get(c echo.Context) error {
 	}
 
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	value, ok := s.list.Get(uint(index))
+	s.mutex.Unlock()
+
 	if !ok {
 		return echo.NewHTTPError(echo.ErrNotFound.Code, "Index not found")
 	}
@@ -181,9 +181,9 @@ func (s *server) RWMutexFind(c echo.Context) error {
 	}
 
 	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
 	index, ok := s.list.Find(value)
+	s.mutex.RUnlock()
+
 	if !ok {
 		return echo.NewHTTPError(echo.ErrNotFound.Code, "Value not found")
 	}
@@ -204,9 +204,9 @@ func (s *server) RWMutexGet(c echo.Context) error {
 	}
 
 	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
 	value, ok := s.list.Get(uint(index))
+	s.mutex.RUnlock()
+
 	if !ok {
 		return echo.NewHTTPError(echo.ErrNotFound.Code, "Index not found")
 	}
