@@ -6,6 +6,7 @@ cleanup() {
     [ -e "$FIND_FILE" ] && unlink "$FIND_FILE"
     [ -e "post.lua" ] && unlink "post.lua"
     [ -e "get.lua" ] && unlink "get.lua"
+    [ -e "rwget.lua" ] && unlink "rwget.lua"
     echo "Cleanup completed"
 }
 
@@ -54,13 +55,6 @@ request = function()
 end
 EOF
 
-# Benchmark the insert operation
-echo "Benchmarking insert operation..."
-if ! wrk -t12 -c100 -d30s -s post.lua http://localhost:8080; then
-  echo "Error fibding on line $line"
-  exit 1
-fi
-
 # Create a script for wrk to use for GET requests
 cat <<EOF > get.lua
 wrk.method = "GET"
@@ -77,10 +71,55 @@ request = function()
 end
 EOF
 
+# Create a script for wrk to use for GET requests for RWMutex
+cat <<EOF > rwget.lua
+wrk.method = "GET"
+values = {}
+index = 1
+$(awk '{print "table.insert(values, \"" $0 "\")"}' $FIND_FILE)
+request = function()
+    local path = "/v2/numbers/rwmutex/value/" .. values[index]
+    index = index + 1
+    if index > #values then
+        index = 1
+    end
+    return wrk.format(nil, path)
+end
+EOF
+
+# Benchmark the insert operation
+echo "Benchmarking insert operation..."
+wrk -t12 -c100 -d30s -s post.lua http://localhost:8080 &
+pid1=$!
+
 # Benchmark the find operation
 echo "Benchmarking find operation..."
-if ! wrk -t12 -c100 -d30s -s get.lua http://localhost:8080; then
-  exit 1
+wrk -t12 -c100 -d30s -s get.lua http://localhost:8080 &
+pid2=$!
+
+# Benchmark the RWMutex find operation
+echo "Benchmarking RWMutex find operation..."
+wrk -t12 -c100 -d30s -s rwget.lua http://localhost:8080 &
+pid3=$!
+
+# Wait for all background processes to finish
+wait $pid1 $pid2 $pid3
+
+# Check the exit statuses and exit with an error if any command failed
+if [ $status1 -ne 0 ]; then
+    echo "Error: Benchmarking insert operation failed"
+    exit 1
 fi
 
-echo "completed successfully"
+if [ $status2 -ne 0 ]; then
+    echo "Error: Benchmarking find operation failed"
+    exit 1
+fi
+
+if [ $status3 -ne 0 ]; then
+    echo "Error: Benchmarking RWMutex find operation failed"
+    exit 1
+fi
+
+echo "Completed successfully"
+

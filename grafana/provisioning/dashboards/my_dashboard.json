@@ -12,41 +12,77 @@
       "title": "HTTP Requests",
       "datasource": "Prometheus",
       "targets": [
+
         {
-          "expr": "histogram_quantile(0.50, sum(rate(myapp_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p50",
-          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum(rate(myapp_request_duration_seconds_bucket{method=\"POST\", url=\"/numbers/:index/:value\"}[5m])) by (le))",
+          "legendFormat": "p50 - POST /numbers/:index/:value",
           "editorMode": "code",
           "range": true
         },
         {
-          "expr": "histogram_quantile(0.90, sum(rate(myapp_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p90",
-          "refId": "B",
+          "expr": "histogram_quantile(0.50, sum(rate(myapp_request_duration_seconds_bucket{method=\"GET\", url=\"/numbers/value/:value\"}[5m])) by (le))",
+          "legendFormat": "p50 - GET /numbers/value/:value",
           "editorMode": "code",
           "range": true
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(myapp_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p99",
-          "refId": "C",
+          "expr": "histogram_quantile(0.50, sum(rate(myapp_request_duration_seconds_bucket{method=\"GET\", url=\"/numbers/rwmutex/value/:value\"}[5m])) by (le))",
+          "legendFormat": "p50 - GET /numbers/rwmutex/value/:value",
+          "editorMode": "code",
+          "range": true
+        },
+
+	{
+          "expr": "histogram_quantile(0.90, sum(rate(myapp_request_duration_seconds_bucket{method=\"POST\", url=\"/numbers/:index/:value\"}[5m])) by (le))",
+          "legendFormat": "p90 - POST /numbers/:index/:value",
           "editorMode": "code",
           "range": true
         },
         {
+          "expr": "histogram_quantile(0.90, sum(rate(myapp_request_duration_seconds_bucket{method=\"GET\", url=\"/numbers/value/:value\"}[5m])) by (le))",
+          "legendFormat": "p90 - GET /numbers/value/:value",
+          "editorMode": "code",
+          "range": true
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum(rate(myapp_request_duration_seconds_bucket{method=\"GET\", url=\"/numbers/rwmutex/value/:value\"}[5m])) by (le))",
+          "legendFormat": "p90 - GET /numbers/rwmutex/value/:value",
+          "editorMode": "code",
+          "range": true
+        },
+
+	{
+          "expr": "histogram_quantile(0.95, sum(rate(myapp_request_duration_seconds_bucket{method=\"POST\", url=\"/numbers/:index/:value\"}[5m])) by (le))",
+          "legendFormat": "p95 - POST /numbers/:index/:value",
+          "editorMode": "code",
+          "range": true
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(myapp_request_duration_seconds_bucket{method=\"GET\", url=\"/numbers/value/:value\"}[5m])) by (le))",
+          "legendFormat": "p95 - GET /numbers/value/:value",
+          "editorMode": "code",
+          "range": true
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(myapp_request_duration_seconds_bucket{method=\"GET\", url=\"/numbers/rwmutex/value/:value\"}[5m])) by (le))",
+          "legendFormat": "p95 - GET /numbers/rwmutex/value/:value",
+          "editorMode": "code",
+          "range": true
+        },
+
+	{
           "expr": "sum(rate(myapp_request_duration_seconds_count[5m]))",
           "legendFormat": "Total Requests",
-          "refId": "D",
           "editorMode": "builder",
           "range": true
         },
         {
           "expr": "sum(myapp_request_duration_seconds_sum)",
           "legendFormat": "Sum Duration",
-          "refId": "E",
           "editorMode": "builder",
           "range": true
         }
+
       ],
       "fieldConfig": {
         "defaults": {
@@ -67,7 +103,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -89,7 +125,7 @@
         },
         "yaxes": [
           {
-            "format": "short",
+            "format": "ms",
             "show": true
           },
           {
@@ -100,3 +136,4 @@
     }
   ]
 }
+
