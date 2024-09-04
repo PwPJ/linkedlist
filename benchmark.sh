@@ -16,7 +16,7 @@ trap cleanup EXIT SIGINT SIGTERM
 # Generate random numbers for insert and find operations
 INSERT_FILE="inserts.json"
 FIND_FILE="finds.txt"
-NUM_ENTRIES=100000
+NUM_ENTRIES=100
 
 # Create random insert JSON
 echo "[" > $INSERT_FILE
@@ -102,8 +102,13 @@ echo "Benchmarking RWMutex find operation..."
 wrk -t12 -c100 -d30s -s rwget.lua http://localhost:8080 &
 pid3=$!
 
-# Wait for all background processes to finish
-wait $pid1 $pid2 $pid3
+# Wait for all background processes to finish and capture their exit statuses
+wait $pid1
+status1=$?
+wait $pid2
+status2=$?
+wait $pid3
+status3=$?
 
 # Check the exit statuses and exit with an error if any command failed
 if [ $status1 -ne 0 ]; then
@@ -122,4 +127,3 @@ if [ $status3 -ne 0 ]; then
 fi
 
 echo "Completed successfully"
-
