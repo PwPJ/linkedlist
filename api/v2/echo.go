@@ -82,6 +82,9 @@ func V2() (*echo.Echo, error) {
 	e.GET("/numbers/rwmutex/value/:value", s.RWMutexFind)
 	e.GET("/numbers/rwmutex/index/:index", s.RWMutexGet)
 
+	e.GET("/numbers/concurrency/value/:value", s.ConcurrencySearchValue)
+	e.GET("/numbers/concurrency/index/:value", s.ConcurrencySearchIndex)
+
 	return e, nil
 }
 
@@ -190,6 +193,58 @@ func (s *server) RWMutexFind(c echo.Context) error {
 
 	data := ListEntity{
 		Index: index,
+		Value: value,
+	}
+	c.JSON(http.StatusOK, data)
+	return nil
+}
+
+func (s *server) ConcurrencySearchIndex(c echo.Context) error {
+	valueStr := c.Param("index")
+	value, err := strconv.Atoi(valueStr)
+
+	if err != nil {
+		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
+	}
+
+	var wg sync.WaitGroup
+	var found int32
+	s.mutex.RLock()
+	index, ok := s.list.SearchConcurrently(&wg, &found, value)
+	s.mutex.RUnlock()
+
+	if !ok {
+		return echo.NewHTTPError(echo.ErrNotFound.Code, "Value not found")
+	}
+
+	data := ListEntity{
+		Index: uint(index),
+		Value: value,
+	}
+	c.JSON(http.StatusOK, data)
+	return nil
+}
+
+func (s *server) ConcurrencySearchValue(c echo.Context) error {
+	valueStr := c.Param("value")
+	value, err := strconv.Atoi(valueStr)
+
+	if err != nil {
+		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
+	}
+
+	var wg sync.WaitGroup
+	var found int32
+	s.mutex.RLock()
+	index, ok := s.list.SearchConcurrently(&wg, &found, value)
+	s.mutex.RUnlock()
+
+	if !ok {
+		return echo.NewHTTPError(echo.ErrNotFound.Code, "Value not found")
+	}
+
+	data := ListEntity{
+		Index: uint(index),
 		Value: value,
 	}
 	c.JSON(http.StatusOK, data)
