@@ -1,8 +1,8 @@
 package linkedlist
 
 import (
+	"context"
 	"sync"
-	"sync/atomic"
 )
 
 type Node struct {
@@ -140,7 +140,7 @@ func (l *LinkedList) HandleList() []int {
 	return values
 }
 
-func (l *LinkedList) SearchConcurrently(wg *sync.WaitGroup, found *int32, find int) (int, bool) {
+func (l *LinkedList) SearchConcurrently(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, find int) (int, bool) {
 	var result int
 	var isFound bool
 	var mu sync.Mutex
@@ -151,8 +151,10 @@ func (l *LinkedList) SearchConcurrently(wg *sync.WaitGroup, found *int32, find i
 			defer wg.Done()
 			index := Nodes[i]
 			for j := 0; j < int(part); j++ {
-				if atomic.LoadInt32(found) == 1 {
+				select {
+				case <-ctx.Done():
 					return
+				default:
 				}
 
 				if index == nil {
@@ -160,11 +162,11 @@ func (l *LinkedList) SearchConcurrently(wg *sync.WaitGroup, found *int32, find i
 				}
 
 				if index.Value == find {
-					atomic.StoreInt32(found, 1)
 					mu.Lock()
 					result = j + i
 					isFound = true
 					mu.Unlock()
+					cancel()
 					return
 				}
 
