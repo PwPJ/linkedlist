@@ -140,10 +140,11 @@ func (l *LinkedList) HandleList() []int {
 	return values
 }
 
-func (l *LinkedList) SearchConcurrently(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, find int) (int, bool) {
+func (l *LinkedList) SearchConcurrently(ctx context.Context, cancel context.CancelFunc, find int) (int, bool) {
 	var result int
 	var isFound bool
 	var mu sync.Mutex
+	var wg sync.WaitGroup
 
 	for i := 0; i < len(Nodes); i++ {
 		wg.Add(1)

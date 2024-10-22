@@ -209,9 +209,8 @@ func (s *server) ConcurrencySearchIndex(c echo.Context) error {
 	ctx, cancel := context.WithCancel(c.Request().Context())
 	defer cancel()
 
-	var wg sync.WaitGroup
 	s.mutex.RLock()
-	index, ok := s.list.SearchConcurrently(ctx, cancel, &wg, value)
+	index, ok := s.list.SearchConcurrently(ctx, cancel, value)
 	s.mutex.RUnlock()
 
 	if !ok {
@@ -236,10 +235,8 @@ func (s *server) ConcurrencySearchValue(c echo.Context) error {
 	ctx, cancel := context.WithCancel(c.Request().Context())
 	defer cancel()
 
-	var wg sync.WaitGroup
-
 	s.mutex.RLock()
-	index, ok := s.list.SearchConcurrently(ctx, cancel, &wg, value)
+	index, ok := s.list.SearchConcurrently(ctx, cancel, value)
 	s.mutex.RUnlock()
 
 	if !ok {
