@@ -202,13 +202,12 @@ func (s *server) RWMutexFind(c echo.Context) error {
 func (s *server) ConcurrencySearchIndex(c echo.Context) error {
 	valueStr := c.Param("index")
 	value, err := strconv.Atoi(valueStr)
-
-	ctx, cancel := context.WithCancel(c.Request().Context())
-	defer cancel()
-
 	if err != nil {
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
 	}
+
+	ctx, cancel := context.WithCancel(c.Request().Context())
+	defer cancel()
 
 	var wg sync.WaitGroup
 	s.mutex.RLock()
@@ -230,13 +229,12 @@ func (s *server) ConcurrencySearchIndex(c echo.Context) error {
 func (s *server) ConcurrencySearchValue(c echo.Context) error {
 	valueStr := c.Param("value")
 	value, err := strconv.Atoi(valueStr)
-
-	ctx, cancel := context.WithCancel(c.Request().Context())
-	defer cancel()
-
 	if err != nil {
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
 	}
+
+	ctx, cancel := context.WithCancel(c.Request().Context())
+	defer cancel()
 
 	var wg sync.WaitGroup
 
