@@ -83,7 +83,7 @@ func V2() (*echo.Echo, error) {
 	e.GET("/numbers/rwmutex/index/:index", s.RWMutexGet)
 
 	e.GET("/numbers/concurrency/value/:value", s.ConcurrencySearchValue)
-	e.GET("/numbers/concurrency/index/:value", s.ConcurrencySearchIndex)
+	e.GET("/numbers/concurrency/index/:index", s.ConcurrencySearchIndex)
 
 	return e, nil
 }
