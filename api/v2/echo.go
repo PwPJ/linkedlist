@@ -132,7 +132,6 @@ func (s *server) Find(c echo.Context) error {
 	valueStr := c.Param("value")
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		fmt.Println(err)
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
 	}
 
