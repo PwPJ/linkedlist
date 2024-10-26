@@ -174,7 +174,13 @@ func (l *LinkedList) SearchConcurrently(ctx context.Context, cancel context.Canc
 				if index.Next == nil {
 					return
 				}
-				index = index.Next
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					index = index.Next
+				}
 			}
 		}(i)
 	}
