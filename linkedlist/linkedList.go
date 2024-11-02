@@ -41,7 +41,7 @@ func (l *LinkedList) Remove(index uint) bool {
 	if index >= l.length {
 		return false
 	}
-
+	l.updateCacheForRemove(index)
 	if index == 0 {
 		l.head = l.head.Next
 		l.length--
@@ -62,11 +62,6 @@ func (l *LinkedList) Remove(index uint) bool {
 
 	current.Next = current.Next.Next
 	l.length--
-
-	partIndex := int(index / part)
-	if index%part == 0 && partIndex < len(Nodes) {
-		Nodes[partIndex] = current
-	}
 
 	return true
 }
@@ -98,9 +93,7 @@ func (l *LinkedList) Insert(index uint, val int) bool {
 		newNode.Next = l.head
 		l.head = newNode
 		l.length++
-		if len(Nodes) == 0 {
-			Nodes = append(Nodes, newNode)
-		}
+		l.updateCacheForInsert(index, newNode)
 		return true
 	}
 
@@ -116,18 +109,51 @@ func (l *LinkedList) Insert(index uint, val int) bool {
 	current.Next = newNode
 	l.length++
 
-	partIndex := int(index / part)
-	if partIndex >= len(Nodes) {
-		// resize the Nodes array
-		for len(Nodes) <= partIndex {
-			Nodes = append(Nodes, nil)
-		}
-	}
-	if index%part == 0 {
-		Nodes[partIndex] = newNode
-	}
+	l.updateCacheForInsert(index, newNode)
 
 	return true
+}
+
+func (l *LinkedList) updateCacheForRemove(index uint) {
+
+	indexNodes := int(index/part) + 1
+
+	if index == 0 {
+		indexNodes = 0
+	}
+
+	for i := indexNodes; i < len(Nodes); i++ {
+		if Nodes[i].Next != nil {
+			Nodes[i] = Nodes[i].Next
+		} else {
+			Nodes = Nodes[:i]
+		}
+
+	}
+
+}
+
+func (l *LinkedList) updateCacheForInsert(index uint, newNode *Node) {
+	partIndex := int(index / part)
+	if partIndex >= len(Nodes) {
+		Nodes = append(Nodes, newNode)
+		return
+	}
+
+	var counter = index
+	newNode1 := newNode
+	for newNode1 != nil {
+		if counter%part == 0 {
+			if partIndex >= len(Nodes) {
+				Nodes = append(Nodes, newNode1)
+			} else {
+				Nodes[partIndex] = newNode1
+			}
+			partIndex++
+		}
+		counter++
+		newNode1 = newNode1.Next
+	}
 }
 
 func (l *LinkedList) HandleList() []int {
@@ -164,7 +190,7 @@ func (l *LinkedList) SearchConcurrently(ctx context.Context, cancel context.Canc
 
 				if index.Value == find {
 					mu.Lock()
-					result = j + i
+					result = (i * int(part)) + j
 					isFound = true
 					mu.Unlock()
 					cancel()
