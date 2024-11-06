@@ -214,3 +214,30 @@ func (l *LinkedList) SearchConcurrently(ctx context.Context, cancel context.Canc
 	wg.Wait()
 	return result, isFound
 }
+
+func (l *LinkedList) SearchInSegmentedNodes(ctx context.Context, index int) (int, bool) {
+	indexStart := index / 10
+	if indexStart >= len(Nodes) {
+		return 0, false
+	}
+
+	if index == 0 && len(Nodes) != 0 && Nodes[0].Value >= 0 {
+		return Nodes[0].Value, true
+	}
+
+	nodes := Nodes[indexStart]
+	targetIndex := index % 10
+
+	for i := 0; i <= targetIndex; i++ {
+		if i == targetIndex && nodes.Value >= 0 {
+			return nodes.Value, true
+		}
+		if nodes.Next == nil {
+			return 0, false
+		}
+		nodes = nodes.Next
+	}
+
+	return 0, false
+
+}

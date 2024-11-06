@@ -82,7 +82,7 @@ func V2() (*echo.Echo, error) {
 	e.GET("/numbers/rwmutex/index/:index", s.RWMutexGet)
 
 	e.GET("/numbers/concurrency/value/:value", s.ConcurrencySearchValue)
-	e.GET("/numbers/concurrency/index/:index", s.ConcurrencySearchIndex)
+	e.GET("/numbers/concurrency/index/:index", s.SearchInSegmentedNodes)
 
 	return e, nil
 }
@@ -196,9 +196,9 @@ func (s *server) RWMutexFind(c echo.Context) error {
 	return nil
 }
 
-func (s *server) ConcurrencySearchIndex(c echo.Context) error {
+func (s *server) SearchInSegmentedNodes(c echo.Context) error {
 	valueStr := c.Param("index")
-	value, err := strconv.Atoi(valueStr)
+	index, err := strconv.Atoi(valueStr)
 	if err != nil {
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
 	}
@@ -207,7 +207,7 @@ func (s *server) ConcurrencySearchIndex(c echo.Context) error {
 	defer cancel()
 
 	s.mutex.RLock()
-	index, ok := s.list.SearchConcurrently(ctx, cancel, value)
+	value, ok := s.list.SearchInSegmentedNodes(ctx, index)
 	s.mutex.RUnlock()
 
 	if !ok {
