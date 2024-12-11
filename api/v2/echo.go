@@ -2,7 +2,6 @@ package v2
 
 import (
 	"context"
-	"fmt"
 	"linkedlist/linkedlist"
 	"log/slog"
 	"net/http"
@@ -82,6 +81,9 @@ func V2() (*echo.Echo, error) {
 	e.GET("/numbers/rwmutex/value/:value", s.RWMutexFind)
 	e.GET("/numbers/rwmutex/index/:index", s.RWMutexGet)
 
+	e.GET("/numbers/concurrency/value/:value", s.ConcurrencySearchValue)
+	e.GET("/numbers/concurrency/index/:index", s.SearchInSegmentedNodes)
+
 	return e, nil
 }
 
@@ -129,7 +131,6 @@ func (s *server) Find(c echo.Context) error {
 	valueStr := c.Param("value")
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		fmt.Println(err)
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
 	}
 
@@ -176,7 +177,6 @@ func (s *server) RWMutexFind(c echo.Context) error {
 	valueStr := c.Param("value")
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		fmt.Println(err)
 		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
 	}
 
@@ -190,6 +190,58 @@ func (s *server) RWMutexFind(c echo.Context) error {
 
 	data := ListEntity{
 		Index: index,
+		Value: value,
+	}
+	c.JSON(http.StatusOK, data)
+	return nil
+}
+
+func (s *server) SearchInSegmentedNodes(c echo.Context) error {
+	valueStr := c.Param("index")
+	index, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
+	}
+
+	ctx, cancel := context.WithCancel(c.Request().Context())
+	defer cancel()
+
+	s.mutex.RLock()
+	value, ok := s.list.SearchInSegmentedNodes(ctx, index)
+	s.mutex.RUnlock()
+
+	if !ok {
+		return echo.NewHTTPError(echo.ErrNotFound.Code, "Value not found")
+	}
+
+	data := ListEntity{
+		Index: uint(index),
+		Value: value,
+	}
+	c.JSON(http.StatusOK, data)
+	return nil
+}
+
+func (s *server) ConcurrencySearchValue(c echo.Context) error {
+	valueStr := c.Param("value")
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return echo.NewHTTPError(echo.ErrBadRequest.Code, "Invalid value")
+	}
+
+	ctx, cancel := context.WithCancel(c.Request().Context())
+	defer cancel()
+
+	s.mutex.RLock()
+	index, ok := s.list.SearchConcurrently(ctx, cancel, value)
+	s.mutex.RUnlock()
+
+	if !ok {
+		return echo.NewHTTPError(echo.ErrNotFound.Code, "Value not found")
+	}
+
+	data := ListEntity{
+		Index: uint(index),
 		Value: value,
 	}
 	c.JSON(http.StatusOK, data)
