@@ -72,7 +72,7 @@ func (l *LinkedList) Insert(index uint, val int) bool {
 			l.middle = newNode
 		}
 		l.length++
-		if l.length >= 9 {
+		if l.length >= 1000 {
 			l.updateCacheForInsert(index, newNode) // Maintain the cache
 		}
 		l.updateMiddleOnInsert(index) // Update the middle pointer
@@ -85,7 +85,7 @@ func (l *LinkedList) Insert(index uint, val int) bool {
 		}
 		l.tail = newNode
 		l.length++
-		if l.length >= 9 {
+		if l.length >= 1000 {
 			l.updateCacheForInsert(index, newNode) // Maintain the cache
 		}
 		l.updateMiddleOnInsert(index) // Update the middle pointer
@@ -103,7 +103,7 @@ func (l *LinkedList) Insert(index uint, val int) bool {
 	newNode.Next = current.Next
 	current.Next = newNode
 	l.length++
-	if l.length >= 9 {
+	if l.length >= 1000 {
 		l.updateCacheForInsert(index, newNode) // Maintain the cache
 	}
 	l.updateMiddleOnInsert(index) // Update the middle pointer
@@ -118,7 +118,7 @@ func (l *LinkedList) Remove(index uint) bool {
 	if index == 0 {
 		l.head = l.head.Next
 		l.length--
-		if l.length >= 9 {
+		if l.length >= 1000 {
 			l.updateCacheForRemove(index)
 			l.updateMiddleOnRemove(index)
 		}
@@ -137,7 +137,7 @@ func (l *LinkedList) Remove(index uint) bool {
 	}
 	current.Next = current.Next.Next
 	l.length--
-	if l.length >= 9 {
+	if l.length >= 1000 {
 		l.updateCacheForRemove(index)
 		l.updateMiddleOnRemove(index)
 	}

@@ -16,7 +16,7 @@ trap cleanup EXIT SIGINT SIGTERM
 # Generate random numbers for insert and find operations
 INSERT_FILE="inserts.json"
 FIND_FILE="finds.txt"
-NUM_ENTRIES=10
+NUM_ENTRIES=100000
 
 # Create random insert JSON
 echo "[" > $INSERT_FILE
