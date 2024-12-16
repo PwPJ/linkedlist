@@ -31,8 +31,11 @@ func (l *LinkedList) updateMiddleOnInsert(index uint) {
 		l.middle = l.head
 		return
 	}
+	if l.middle == nil { // Add a nil check to ensure safe access
+		l.middle = l.head
+	}
 	if index <= l.length/2 {
-		if l.length%2 == 0 {
+		if l.length%2 == 0 && l.middle.Next != nil { // Ensure l.middle.Next is not nil
 			l.middle = l.middle.Next
 		}
 	}
@@ -69,35 +72,41 @@ func (l *LinkedList) Insert(index uint, val int) bool {
 			l.middle = newNode
 		}
 		l.length++
-		if l.length >= 1000 {
-			l.updateCacheForInsert(index, newNode)
-			l.updateMiddleOnInsert(index)
+		if l.length >= 9 {
+			l.updateCacheForInsert(index, newNode) // Maintain the cache
 		}
+		l.updateMiddleOnInsert(index) // Update the middle pointer
 		return true
 	}
 
 	if index == l.length {
-		l.tail.Next = newNode
+		if l.tail != nil {
+			l.tail.Next = newNode
+		}
 		l.tail = newNode
 		l.length++
-		if l.length >= 1000 {
-			l.updateCacheForInsert(index, newNode)
-			l.updateMiddleOnInsert(index)
+		if l.length >= 9 {
+			l.updateCacheForInsert(index, newNode) // Maintain the cache
 		}
+		l.updateMiddleOnInsert(index) // Update the middle pointer
 		return true
 	}
 
 	current := l.head
 	for i := uint(0); i < index-1; i++ {
+		if current == nil {
+			return false
+		}
 		current = current.Next
 	}
+
 	newNode.Next = current.Next
 	current.Next = newNode
 	l.length++
-	if l.length >= 1000 {
-		l.updateCacheForInsert(index, newNode)
-		l.updateMiddleOnInsert(index)
+	if l.length >= 9 {
+		l.updateCacheForInsert(index, newNode) // Maintain the cache
 	}
+	l.updateMiddleOnInsert(index) // Update the middle pointer
 	return true
 }
 
@@ -109,7 +118,7 @@ func (l *LinkedList) Remove(index uint) bool {
 	if index == 0 {
 		l.head = l.head.Next
 		l.length--
-		if l.length >= 1000 {
+		if l.length >= 9 {
 			l.updateCacheForRemove(index)
 			l.updateMiddleOnRemove(index)
 		}
@@ -128,7 +137,7 @@ func (l *LinkedList) Remove(index uint) bool {
 	}
 	current.Next = current.Next.Next
 	l.length--
-	if l.length >= 1000 {
+	if l.length >= 9 {
 		l.updateCacheForRemove(index)
 		l.updateMiddleOnRemove(index)
 	}
@@ -136,7 +145,7 @@ func (l *LinkedList) Remove(index uint) bool {
 }
 
 func (l *LinkedList) Find(val int) (uint, bool) {
-	if l.length < 1000 {
+	if l.length < 9 {
 		current := l.head
 		index := uint(0)
 		for current != nil {
